@@ -1,0 +1,38 @@
+import pprint
+import requests
+import bs4 
+import lxml
+from fake_headers import Headers
+
+from datetime import datetime
+import pytz
+
+KEYWORDS = ['дизайн', 'фото', 'web', 'python']
+
+response = requests.get('https://habr.com/ru/articles/', headers=Headers(browser='chrome', os='lin').generate())
+soup = bs4.BeautifulSoup(response.text, features='lxml')
+
+all_list = soup.select_one('div.tm-articles-list')
+articles = all_list.select('div.tm-article-snippet')
+# print(articles)
+for article in articles:
+    link = 'https://habr.com' + article.select_one('a.tm-title__link')['href'] #нашли ссылки на статьи
+    # print(link)
+    title = article.select_one('h2')# заголовок
+    # print(title.text)
+    date = article.select_one('time')['datetime']
+    utc_dt = datetime.fromisoformat(date.replace('Z', '+00:00'))
+    moscow_tz = pytz.timezone('Europe/Moscow')  # Устанавливаем московский часовой пояс
+    moscow_dt = utc_dt.astimezone(moscow_tz)  # Преобразуем в московский часовой пояс
+    # print (date) #дата
+    response  = requests.get (link, headers=Headers(browser='chrome', os='lin').generate())   
+    soup = bs4.BeautifulSoup(response.text, features='lxml')
+    all_list_articles = soup.select_one('div.tm-misprint-area__wrapper') #открываем статьи 
+    
+    if all_list_articles:
+        text_content = all_list_articles.get_text()  # получаем весь текст статьи
+        for keyword in KEYWORDS:
+            if keyword in text_content:  # проверяем на наличие ключевого слова
+                print(f"Найдено слово '{keyword}' \nВ статье: {title.text} \nCсылка на статью: {link} \nДата публикации по московскому времени: {moscow_dt.strftime('%Y-%m-%d %H:%M:%S')}\n------------------")
+                break
+    
